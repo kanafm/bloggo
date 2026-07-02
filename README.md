@@ -6,7 +6,19 @@
 nix build
 ```
 
-3. commit and push (or create a PR)
+(development with a separate consumer package)
+* checkout a branch (`git checkout -b feature/blah`)
+* commit (`git commit -m ...` or `git commit --amend`)
+* build library (`nix build`)
+* make remote aware of it.
+  * if you use github proxy: `github-proxy update kanafm/bloggo`
+  * if you use github.com: `git push origin feature/blah`
+* now cd into consumer package
+* update your go.mod: `go get github.com/kanafm/bloggo@feature/blah`
+* and build your consumer package (like `nix build`)
+
+(pushing to remote)
+* commit and push (or create a PR)
 ```bash
 git commit -m ...
 
