@@ -6,26 +6,34 @@ import (
 	"os"
 )
 
-type Writer struct {
+type Bloggo struct {
 	out io.Writer
 }
 
-func New() *Writer {
-	return &Writer{out: os.Stdout}
+func Of() *Bloggo {
+	return &Bloggo{out: os.Stdout}
 }
 
-func NewWithWriter(w io.Writer) *Writer {
-	return &Writer{out: w}
+func OfWriter(w io.Writer) *Bloggo {
+	return &Bloggo{out: w}
 }
 
-func (w *Writer) Writeln(text string) {
+func (w *Bloggo) Writeln(text string) *Bloggo {
 	fmt.Fprintln(w.out, text)
+	return w
 }
 
-func (w *Writer) Write(text string) {
+func (w *Bloggo) Write(text string) *Bloggo {
 	fmt.Fprint(w.out, text)
+	return w
 }
 
-func (w *Writer) Writef(format string, args ...any) {
+func (w *Bloggo) Writef(format string, args ...any) *Bloggo {
 	fmt.Fprintf(w.out, format, args...)
+	return w
+}
+
+func (w *Bloggo) SayHello() *Bloggo {
+	fmt.Fprintln(os.Stdout, "Hello, World!")
+	return w
 }
