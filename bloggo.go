@@ -7,22 +7,50 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	. "github.com/kanafm/bloggo/core"
 )
 
-type BuildRequest struct {
-	EntryPoints []string
-	OutDir      string
-	Processors  []Processor
-}
-
-type Bloggable interface {
-	Build(request BuildRequest) error
-}
-
+// Bloggo is a static site builder.
 type Bloggo struct{}
 
+var _ Bloggable = (*Bloggo)(nil)
+
+// Creates a new Bloggo.
 func New() *Bloggo {
 	return &Bloggo{}
+}
+
+// Builds your site.
+func (b Bloggo) Build(request BuildRequest) error {
+	for ei := range request.EntryPoints {
+		e := request.EntryPoints[ei]
+
+		err := filepath.WalkDir(e, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+
+			//path is absolute path
+			fmt.Println(". processing ", path)
+			err = b.handle(path, request.OutDir, request.Processors)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return nil
 }
 
 func (b Bloggo) handle(path string, outdir string, processors []Processor) error {
@@ -63,72 +91,5 @@ func (b Bloggo) handle(path string, outdir string, processors []Processor) error
 	}
 
 	fmt.Println("\t. -> ", outFile)
-	return nil
-}
-
-func (b Bloggo) Build(request BuildRequest) error {
-	for ei := range request.EntryPoints {
-		e := request.EntryPoints[ei]
-
-		err := filepath.WalkDir(e, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				return nil
-			}
-
-			//path is absolute path
-			fmt.Println(". processing ", path)
-			err = b.handle(path, request.OutDir, request.Processors)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
-
-		if err != nil {
-			return err
-		}
-
-	}
-
-	return nil
-}
-
-type Processor interface {
-	// CanHandle determines whether this processor can handle this file
-	CanHandle(fileLocation string) bool
-
-	// Handle processes file at file location, writing to output file
-	Handle(fileLocation string, outputFile string) error
-}
-
-type NoOpProcessor struct{}
-
-func (NoOpProcessor) CanHandle(fileLocation string) bool {
-	return true
-}
-
-func (n NoOpProcessor) Handle(fileLocation string, outputFile string) error {
-	if !n.CanHandle(fileLocation) {
-		return errors.New("Cannot handle file: " + fileLocation)
-	}
-
-	data, err := os.ReadFile(fileLocation)
-	if err != nil {
-		return err
-	}
-
-	htmlified := fmt.Sprintf(
-		"<div><pre style=\"font-family: ui-monospace, monospace; margin:0;\">%s</pre></div>",
-		string(data))
-
-	err = os.WriteFile(outputFile, []byte(htmlified), 0o644)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
