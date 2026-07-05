@@ -1,3 +1,33 @@
+
+
+## usage
+
+bloggo is a zero-dependency *library* and it takes input directory/ies and outputs a site.
+
+```go
+b := bloggo.New()
+
+err := b.Build(BuildRequest{
+    EntryPoints: []string{"./docs"},
+    OutDir:      "./site",
+    Processors:  []Processor{typst.NewProcessor(), NoOpProcessor{}},
+})
+```
+
+where,
+* EntryPoints: the set of entrypoints (directories)
+* OutDir: where to write your site
+* Processors: processors to compile every file in your entrypoints into HTML
+
+## roadmap
+
+
+* [x] Processors - supports Typst as well as provide-your-own
+* [ ] Templating - headers, footers, navigation
+* [ ] Invert responsibility for routing logic (i.e. `docs/hello/1.md` maps to `docs/hello-1.md`). Currently everything generates a flat list of HTML (like `1.html`) and gives consumer no flexibility.
+* [ ] Bring your own styling/CSS
+
+## development
 1. make changes...
 
 
@@ -6,23 +36,4 @@
 nix build
 ```
 
-(development with a separate consumer package)
-* checkout a branch (`git checkout -b feature/blah`)
-* commit (`git commit -m ...` or `git commit --amend`)
-* build library (`nix build`)
-* make remote aware of it.
-  * if you use github proxy: `github-proxy update kanafm/bloggo`
-  * if you use github.com: `git push origin feature/blah`
-* now cd into consumer package
-* update your go.mod: `go get github.com/kanafm/bloggo@feature/blah`
-* and build your consumer package (like `nix build`)
-
-(pushing to remote)
-* commit and push (or create a PR)
-```bash
-git commit -m ...
-
-github-proxy remove kanafm/bloggo # or you can use a new terminal without https_proxy set. this is so that git pushes to real GitHub.
-git push origin master
-github-proxy add .
-```
+3. enjoy
