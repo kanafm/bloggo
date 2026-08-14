@@ -7,4 +7,5 @@ type BuildRequest struct {
 	EntryPoints []string
 	OutDir      string
 	Processors  []Processor
+	Router      Router
 }
