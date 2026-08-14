@@ -32,6 +32,10 @@ func Build(request BuildRequest) error {
 
 func createBuildPlan(request BuildRequest) (buildPlan, error) {
 	plan := buildPlan{}
+	router := request.Router
+	if router == nil {
+		router = MirrorRouter{}
+	}
 
 	absoluteOutDir, err := filepath.Abs(request.OutDir)
 	if err != nil {
@@ -71,19 +75,28 @@ func createBuildPlan(request BuildRequest) (buildPlan, error) {
 					entryPoint,
 				)
 			}
-
-			processor, err := selectProcessor(path, request.Processors)
-			if err != nil {
-				return err
-			}
+			claimedInputs[absoluteInput] = entryPoint
 
 			relativeInput, err := filepath.Rel(entryPoint, path)
 			if err != nil {
 				return fmt.Errorf("route input file %q: %w", path, err)
 			}
-			extension := filepath.Ext(relativeInput)
-			relativeOutput := strings.TrimSuffix(relativeInput, extension) + ".html"
-			outputFile := filepath.Join(absoluteOutDir, relativeOutput)
+
+			relativeOutput, ok := router.Route(relativeInput)
+			if !ok {
+				fmt.Println(". skipped: router did not generate a route for input", path)
+				return nil
+			}
+
+			outputFile, err := resolveOutputFile(absoluteOutDir, path, relativeOutput)
+			if err != nil {
+				return err
+			}
+
+			processor, err := selectProcessor(path, request.Processors)
+			if err != nil {
+				return err
+			}
 
 			if previousInput, exists := claimedOutputs[outputFile]; exists {
 				return fmt.Errorf(
@@ -94,7 +107,6 @@ func createBuildPlan(request BuildRequest) (buildPlan, error) {
 				)
 			}
 
-			claimedInputs[absoluteInput] = entryPoint
 			claimedOutputs[outputFile] = path
 			plan.jobs = append(plan.jobs, buildJob{
 				entryPoint: entryPoint,
@@ -118,6 +130,27 @@ func createBuildPlan(request BuildRequest) (buildPlan, error) {
 	})
 
 	return plan, nil
+}
+
+func resolveOutputFile(outDir string, inputFile string, route string) (string, error) {
+	if route == "" {
+		return "", fmt.Errorf("router generated an empty route for input %q", inputFile)
+	}
+	if filepath.IsAbs(route) || filepath.VolumeName(route) != "" {
+		return "", fmt.Errorf("router generated an absolute route %q for input %q", route, inputFile)
+	}
+
+	cleanRoute := filepath.Clean(route)
+	if cleanRoute == "." || cleanRoute == ".." || strings.HasPrefix(cleanRoute, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("router generated an invalid route %q for input %q", route, inputFile)
+	}
+
+	outputFile := filepath.Join(outDir, cleanRoute)
+	if !pathContains(outDir, outputFile) {
+		return "", fmt.Errorf("router generated a route outside the output directory %q for input %q", route, inputFile)
+	}
+
+	return outputFile, nil
 }
 
 func executeBuildPlan(plan buildPlan) error {
